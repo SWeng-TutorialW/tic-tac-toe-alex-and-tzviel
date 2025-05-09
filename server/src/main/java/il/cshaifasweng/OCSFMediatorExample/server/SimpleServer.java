@@ -7,18 +7,39 @@ import java.io.IOException;
 import java.util.ArrayList;
 
 import il.cshaifasweng.OCSFMediatorExample.entities.Warning;
+import il.cshaifasweng.OCSFMediatorExample.entities.GameMessage;
 import il.cshaifasweng.OCSFMediatorExample.server.ocsf.SubscribedClient;
 
 public class SimpleServer extends AbstractServer {
 	private static ArrayList<SubscribedClient> SubscribersList = new ArrayList<>();
+	private GameManager gameManager;
 
 	public SimpleServer(int port) {
 		super(port);
-		
+		gameManager = GameManager.getInstance();
 	}
 
 	@Override
 	protected void handleMessageFromClient(Object msg, ConnectionToClient client) {
+		if (msg instanceof GameMessage) {
+			GameMessage gameMsg = (GameMessage) msg;
+			
+			switch (gameMsg.getType()) {
+				case JOIN_GAME:
+					gameManager.handleJoinGame(client);
+					break;
+				case MOVE:
+					gameManager.handleMove(gameMsg, client);
+					break;
+				case RESTART_GAME:
+					gameManager.handleRestartGame(client);
+					break;
+				default:
+					System.out.println("Unknown game message type: " + gameMsg.getType());
+			}
+			return;
+		}
+		
 		String msgString = msg.toString();
 		if (msgString.startsWith("#warning")) {
 			Warning warning = new Warning("Warning from server!");
@@ -49,6 +70,18 @@ public class SimpleServer extends AbstractServer {
 			}
 		}
 	}
+	
+	@Override
+	protected void clientDisconnected(ConnectionToClient client) {
+		super.clientDisconnected(client);
+		gameManager.handleClientDisconnected(client);
+		
+		// Remove from subscribers list if present
+		if (!SubscribersList.isEmpty()) {
+			SubscribersList.removeIf(subscribedClient -> subscribedClient.getClient().equals(client));
+		}
+	}
+	
 	public void sendToAllClients(String message) {
 		try {
 			for (SubscribedClient subscribedClient : SubscribersList) {

@@ -25,10 +25,10 @@ public class App extends Application {
     @Override
     public void start(Stage stage) throws IOException {
     	EventBus.getDefault().register(this);
-    	client = SimpleClient.getClient();
-    	client.openConnection();
-        scene = new Scene(loadFXML("primary"), 640, 480);
+    	// Load the connection screen instead of automatically connecting
+        scene = new Scene(loadFXML("ConnectionScreen"), 600, 400);
         stage.setScene(scene);
+        stage.setTitle("Tic-Tac-Toe Game");
         stage.show();
     }
 
@@ -41,14 +41,15 @@ public class App extends Application {
         return fxmlLoader.load();
     }
     
-    
-
     @Override
 	public void stop() throws Exception {
-		// TODO Auto-generated method stub
     	EventBus.getDefault().unregister(this);
-        client.sendToServer("remove client");
-        client.closeConnection();
+        // Only try to disconnect if client is connected
+        client = SimpleClient.getClient();
+        if (client.isConnected()) {
+            client.sendToServer("remove client");
+            client.closeConnection();
+        }
 		super.stop();
 	}
     
@@ -62,7 +63,12 @@ public class App extends Application {
         	);
         	alert.show();
     	});
-    	
+    }
+    
+    @Subscribe
+    public void onGameEvent(GameEvent event) {
+        // Handle game events at the application level if needed
+        // This is useful for events that should be handled regardless of which controller is active
     }
 
 	public static void main(String[] args) {
